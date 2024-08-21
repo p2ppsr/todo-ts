@@ -22,20 +22,12 @@ import {
   decrypt, encrypt, createAction, getTransactionOutputs, stampLogFormat
 } from '@babbage/sdk-ts'
 import checkForMetaNetClient from './utils/checkForMetaNetClient'
-
+import {Task, Token} from './types/types'
 // This stylesheet also uses this for themeing.
 import './App.scss' 
 
 // Define the Task interface types.
-interface Task {
-  task: string
-  sats: number
-  token: {
-    lockingScript: string
-    txid: string
-    outputIndex: number
-  }
-}
+
 
 // This is the namespace address for the ToDo protocol
 // You can create your own Bitcoin address to use, and customize this protocol
@@ -201,21 +193,21 @@ const App: React.FC = () => {
         log: ''
       })
 
-      if (newToDoToken.log) console.log(stampLogFormat(newToDoToken.log))
+      //if (newToDoToken.log) console.log(stampLogFormat(newToDoToken.log))
 
       // Now, we just let the user know the good news! Their token has been 
       // created, and added to the list.
       toast.dark('Task successfully created!')
 			setTasks((originalTasks) => ([
 				{
-					task: createTask,
-					sats: Number(createAmount),
-					token: {
-						lockingScript: bitcoinOutputScript,
-						txid: newToDoToken.txid || '',
-						outputIndex: 0,
-					},
-				} as Task,
+						task: createTask,
+						sats: Number(createAmount),
+						token: {
+								lockingScript: bitcoinOutputScript,
+								txid: newToDoToken.txid || '',
+								outputIndex: 0,
+						} as Token,  // Explicitly typing the token object
+				},
 				...originalTasks,
 			]))
 			setCreateTask('')
@@ -237,7 +229,8 @@ const App: React.FC = () => {
 	const handleCompleteSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault() // Stop the HTML form from reloading the page.
     try {
-      // Start a loading bar to let the user know we're working on it.
+
+			// Start a loading bar to let the user know we're working on it.
       setCompleteLoading(true)
 
       // Here, we're using the PushDrop library to unlcok / redeem the PushDrop 
@@ -273,16 +266,16 @@ const App: React.FC = () => {
       // for us, so that the user can get their Bitcoins back.This is another 
       // "Action", which is just a Bitcoin transaction.
 			if (!selectedTask) {
-				throw new Error("No task selected.");
+				throw new Error("No task selected.")
 			}
 			
 			// Check all arguments are defined
-			if (!selectedTask || !selectedTask.token || !selectedTask.token.txid || selectedTask.token.outputIndex === undefined) {
-				throw new Error("Task data is incomplete or undefined.");
+			if (!selectedTask.token || !selectedTask.token.txid || selectedTask.token.outputIndex === undefined) {
+				throw new Error("Task data is incomplete or undefined.")
 			}
 
-			console.log('Selected Task:', selectedTask);
-			console.log('Unlocking Script:', unlockingScript);
+			//console.log('Selected Task:', selectedTask)
+			//console.log('Unlocking Script:', unlockingScript)
 			//await loadTasks()
 
 			const r = await createAction({
@@ -303,9 +296,9 @@ const App: React.FC = () => {
 					},
 				},
 				log: '',
-			});
+			})
 					
-			if (r.log) console.log(stampLogFormat(r.log))
+			//if (r.log) console.log(stampLogFormat(r.log))
 
       // Finally, we let the user know about the good news, and that their  
       // completed ToDo token has been removed from their list! The satoshis 
@@ -326,11 +319,14 @@ const App: React.FC = () => {
     }
 	}
 
+	console.log('tasks=', tasks)
+
   // This loads a user's existing ToDo tokens from their token basket 
   // whenever the page loads. This populates their ToDo list.
   // A basket is just a way to keep track of different kinds of Bitcoin tokens.
   useEffect(() => {
     (async () => {
+			console.log('useEffect()')
       try {
 
         // We use a function called "getTransactionOutputs" to fetch this 
