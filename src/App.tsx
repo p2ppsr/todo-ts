@@ -193,7 +193,7 @@ const App: React.FC = () => {
         log: ''
       })
 
-      //if (newToDoToken.log) console.log(stampLogFormat(newToDoToken.log))
+      if (newToDoToken.log) console.log(stampLogFormat(newToDoToken.log))
 
       // Now, we just let the user know the good news! Their token has been 
       // created, and added to the list.
@@ -274,10 +274,6 @@ const App: React.FC = () => {
 				throw new Error("Task data is incomplete or undefined.")
 			}
 
-			//console.log('Selected Task:', selectedTask)
-			//console.log('Unlocking Script:', unlockingScript)
-			//await loadTasks()
-
 			const r = await createAction({
 				description,
 				inputs: { // These are inputs, which unlock Bitcoin tokens.
@@ -298,7 +294,7 @@ const App: React.FC = () => {
 				log: '',
 			})
 					
-			//if (r.log) console.log(stampLogFormat(r.log))
+			if (r.log) console.log(stampLogFormat(r.log))
 
       // Finally, we let the user know about the good news, and that their  
       // completed ToDo token has been removed from their list! The satoshis 
@@ -319,14 +315,11 @@ const App: React.FC = () => {
     }
 	}
 
-	console.log('tasks=', tasks)
-
   // This loads a user's existing ToDo tokens from their token basket 
   // whenever the page loads. This populates their ToDo list.
   // A basket is just a way to keep track of different kinds of Bitcoin tokens.
   useEffect(() => {
     (async () => {
-			console.log('useEffect()')
       try {
 
         // We use a function called "getTransactionOutputs" to fetch this 
