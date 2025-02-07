@@ -1,5 +1,4 @@
 declare module 'react-toastify'
-declare module '@babbage/sdk-ts'
 
 // Interfaces used, it is necessary to declare them here
 export interface Token {
@@ -12,7 +11,7 @@ export interface Token {
   txid: string
   vout: number
   outputIndex?: number
-  lockingScript?: any
+  lockingScript?: LockingScript
 }
 
 export interface Task {
