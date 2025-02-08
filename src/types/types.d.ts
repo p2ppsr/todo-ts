@@ -1,21 +1,14 @@
+import { type LockingScript } from '@bsv/sdk'
+
 declare module 'react-toastify'
+declare module '@mui/material'
+declare module '@mui/material/styles'
+declare module '@mui/icons-material/GetApp'
 
 // Interfaces used, it is necessary to declare them here
-export interface Token {
-  inputs: Record<string, OptionalEnvelopeEvidenceApi> | undefined
-  mapiResponses: MapiResponseApi[] | undefined
-  outputScript: BitcoinOutputScript
-  proof: Buffer | TscMerkleProofApi | undefined
-  rawTX: string
-  satoshis: number
-  txid: string
-  vout: number
-  outputIndex?: number
-  lockingScript?: LockingScript
-}
-
 export interface Task {
   task: string
   sats: number
-  token: Token
+  outpoint: string
+  lockingScript: LockingScript
 }
