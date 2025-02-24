@@ -9,7 +9,6 @@ export default async function checkForMetaNetClient (): Promise<number> {
       return -1
     }
   } catch (e) {
-    console.error(e)
     return 0
   }
 }

@@ -80,7 +80,7 @@ const App: React.FC = () => {
       }).catch(error => {
         console.error('Error checking for MetaNet Client:', error)
       })
-    }, 10000)
+    }, 1000)
 
     // Return a cleanup function
     return () => {
@@ -179,8 +179,6 @@ const App: React.FC = () => {
         // tense, for the user's future reference.
         description: `Create a TODO task: ${createTask}`
       })
-
-      console.log('newToDoToken', newToDoToken)
 
       // if (newToDoToken.log != null && newToDoToken.log !== '') { // TODOMATT what should i do about logging here?
       //   console.log(stampLogFormat(newToDoToken.log))
