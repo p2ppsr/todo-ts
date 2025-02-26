@@ -1,4 +1,4 @@
-import { type LockingScript } from '@bsv/sdk'
+import { type BEEF, type LockingScript } from '@bsv/sdk'
 
 declare module 'react-toastify'
 declare module '@mui/material'
@@ -10,5 +10,6 @@ export interface Task {
   task: string
   sats: number
   outpoint: string
-  lockingScript: LockingScript
+  lockingScript: string
+  beef: BEEF | undefined
 }
