@@ -1,8 +1,8 @@
-import { getNetwork } from '@babbage/sdk-ts'
+import { WalletClient } from '@bsv/sdk'
 
 export default async function checkForMetaNetClient (): Promise<number> {
   try {
-    const result = await getNetwork()
+    const result = (await new WalletClient('json-api', 'non-admin.com').getNetwork()).network
     if (result === 'mainnet' || result === 'testnet') {
       return 1
     } else {
