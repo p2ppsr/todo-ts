@@ -57,6 +57,8 @@ const GitHubIconStyle = styled(IconButton)({
   color: '#ffffff'
 })
 
+const walletClient = new WalletClient()
+
 const App: React.FC = () => {
   // These are some state variables that control the app's interface.
   const [isMncMissing, setIsMncMissing] = useState<boolean>(false)
@@ -78,6 +80,7 @@ const App: React.FC = () => {
           setIsMncMissing(true) // Open modal if MNC is not found
         } else {
           setIsMncMissing(false) // Ensure modal is closed if MNC is found
+          clearInterval(intervalId)
         }
       }).catch(error => {
         console.error('Error checking for MetaNet Client:', error)
@@ -116,7 +119,7 @@ const App: React.FC = () => {
       // encrypt it with a key that only they have. When we put the encrypted
       // value into a ToDo Bitcoin token, only the same user can get it back
       // later on, after creation.
-      const encryptedTask = (await new WalletClient('json-api', 'non-admin.com').encrypt({
+      const encryptedTask = (await walletClient.encrypt({
         // The plaintext for encryption is what the user put into the text field.
         // encrypt() expects an array of numbers. The BSV provides toArray(), a utility function that creates a number array from a string.
         plaintext: Utils.toArray(createTask, 'utf8'),
@@ -135,7 +138,7 @@ const App: React.FC = () => {
       // This uses a library called PushDrop, which lets you attach data
       // payloads to Bitcoin token outputs.Then, you can redeem / unlock the
       // tokens later.
-      const pushdrop = new PushDrop(new WalletClient('json-api', 'non-admin.com'))
+      const pushdrop = new PushDrop(walletClient)
       const bitcoinOutputScript = await pushdrop.lock(
         [ // The "fields" are the data payload to attach to the token.
           // For more info on these fields, look at the ToDo protocol document
@@ -156,7 +159,7 @@ const App: React.FC = () => {
       // new token with the blockchain. On the MetaNet, Actions are anything
       // that a user does, and all Actions take the form of Bitcoin
       // transactions.
-      const newToDoToken = await new WalletClient('json-api', 'non-admin.com').createAction({
+      const newToDoToken = await walletClient.createAction({
         // This Bitcoin transaction ("Action" with a capital A) has one output,
         // because it has led to the creation of a new Bitcoin token. The token
         // that gets created represents our new ToDo list item.
@@ -245,10 +248,8 @@ const App: React.FC = () => {
       // const atomicBEEF = loadedBeef.toBinaryAtomic(txid)
       const loadedBeef = Beef.fromBinary(selectedTask.beef as number[])
       const ok = await loadedBeef.verify(await new Services('main').getChainTracker(), true)
-
-      debugger
       // const txTest = Transaction.fromBEEF(selectedTask.beef as number[], txid)
-      const { signableTransaction } = await new WalletClient('json-api', 'non-admin.com').createAction({
+      const { signableTransaction } = await walletClient.createAction({
         description,
         // These are inputs, which unlock Bitcoin tokens.
         // The input comes from the previous ToDo token, which we're now
@@ -270,7 +271,6 @@ const App: React.FC = () => {
       if (signableTransaction === undefined) {
         throw new Error('Failed to create signable transaction')
       }
-      debugger
       const partialTx = Transaction.fromBEEF(signableTransaction.tx)
 
       // Here, we're using the PushDrop library to unlcok / redeem the PushDrop
@@ -278,7 +278,7 @@ const App: React.FC = () => {
       // PushDrop can "unlock" and spend the token. When the token gets spent,
       // the user gets their bitcoins back, and the ToDo token is removed from
       // the list.
-      const unlocker = new PushDrop(new WalletClient('json-api', 'non-admin.com')).unlock(
+      const unlocker = new PushDrop(walletClient).unlock(
         // To unlock the token, we need to use the same "todo list" protocolID
         // and keyID as when we created the ToDo token before. Otherwise, the
         // key won't fit the lock and the Bitcoins won't come out.
@@ -299,7 +299,7 @@ const App: React.FC = () => {
       // Now, we're going to use the unlocking puzle that PushDrop has prepared
       // for us, so that the user can get their Bitcoins back.This is another
       // "Action", which is just a Bitcoin transaction. TODOMATT rewrite this section's comments
-      const signResult = await new WalletClient('json-api', 'non-admin.com').signAction({
+      const signResult = await walletClient.signAction({
         reference: signableTransaction.reference,
         spends: {
           0: {
@@ -343,7 +343,7 @@ const App: React.FC = () => {
         // to represent something of value, like a task that needs to be
         // completed.
         // This function will only get tokens that are active on the list, not already complete TODOMATT CHECK THIS
-        const tasksFromBasket = await new WalletClient('json-api', 'non-admin.com').listOutputs({
+        const tasksFromBasket = await walletClient.listOutputs({
           // The name of the basket where the tokens are kept
           basket: 'todo tokens',
           // Also get the envelope needed if we complete (spend) the ToDo token
@@ -353,20 +353,17 @@ const App: React.FC = () => {
         // decode and decrypt the tasks we got from the basket.When the tasks
         // were created, they were encrypted so that only this user could read
         // them.Here, the encryption process is reversed.
-        debugger
-        const beef = Beef.fromBinary(tasksFromBasket.BEEF as number[])
         let txid: string
         const decryptedTasksResults = await Promise.all(tasksFromBasket.outputs.map(async (task: WalletOutput, i: number) => {
           try {
             txid = tasksFromBasket.outputs[i].outpoint.split('.')[0]
-            const tx = beef.findTxid(txid)!.tx
+            const tx = Transaction.fromBEEF(tasksFromBasket.BEEF as number[], task.outpoint.split('.')[0])
             const lockingScript = tx!.outputs[0].lockingScript
 
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             // const lockingScript = parsedTx.outputs[i].lockingScript
             const decodedTask = PushDrop.decode(lockingScript)
             const encryptedTask = decodedTask.fields[1]
-            const walletClient = new WalletClient('json-api', 'non-admin.com')
             const decryptedTaskNumArray =
               await walletClient.decrypt({
                 ciphertext: encryptedTask,
@@ -387,35 +384,6 @@ const App: React.FC = () => {
             return null
           }
         }))
-
-        // const decryptedTasksResults = await Promise.all(
-        //   tasksFromBasket.outputs.map(async (task: TransactionOutput, i: number) => {
-        //     try {
-        //       const decodedTask = PushDrop.decode(task.lockingScript)
-        //       const encryptedTask = decodedTask.fields[1]
-        //       const walletClient = new WalletClient('json-api', 'non-admin.com')
-        //       const decryptedTaskNumArray = (
-        //         await walletClient.decrypt({
-        //           ciphertext: encryptedTask,
-        //           protocolID: [0, 'todo list'],
-        //           keyID: '1'
-        //         })
-        //       ).plaintext
-        //       const decryptedTask = Utils.toUTF8(decryptedTaskNumArray)
-
-        //       return {
-        //         lockingScript: task.lockingScript,
-        //         outpoint: `${txid}.${i}`,
-        //         sats: task.satoshis ?? 0,
-        //         task: decryptedTask,
-        //         beef: tasksFromBasket.BEEF
-        //       }
-        //     } catch (e) {
-        //       // console.error('Error decrypting task:', e)
-        //       return null
-        //     }
-        //   })
-        // )
 
         // Filter out outputs that returned null (i.e. errors)
         const decryptedTasks: Task[] = decryptedTasksResults.filter(
