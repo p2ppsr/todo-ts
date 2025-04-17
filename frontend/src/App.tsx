@@ -374,7 +374,7 @@ const App: React.FC = () => {
 
             return {
               lockingScript: lockingScript.toHex(),
-              outpoint: `${txid}.${i}`,
+              outpoint: `${txid}.${0}`,
               sats: task.satoshis ?? 0,
               task: decryptedTask,
               beef: tasksFromBasket.BEEF
