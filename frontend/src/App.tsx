@@ -144,7 +144,7 @@ const App: React.FC = () => {
           // For more info on these fields, look at the ToDo protocol document
           // (PROTOCOL.md). Note that the PushDrop library handles the public
           // key, signature, and OP_DROP fields automatically.
-          Utils.toArray(TODO_PROTO_ADDR, 'utf8') as number[], // TODO protocol namespace address TODOMATT remove the as number[] after updated sdk
+          Utils.toArray(TODO_PROTO_ADDR, 'utf8'),
           encryptedTask // TODO task (encrypted)
         ],
         // The same "todo list" protocol and key ID can be used to sign and
@@ -185,10 +185,6 @@ const App: React.FC = () => {
         // tense, for the user's future reference.
         description: `Create a TODO task: ${createTask}`
       })
-
-      // if (newToDoToken.log != null && newToDoToken.log !== '') { // TODOMATT what should i do about logging here?
-      //   console.log(stampLogFormat(newToDoToken.log))
-      // }
 
       // Now, we just let the user know the good news! Their token has been
       // created, and added to the list.
@@ -233,22 +229,10 @@ const App: React.FC = () => {
       let description = `Complete a TODO task: "${selectedTask.task}"`
       if (description.length > 128) { description = description.substring(0, 128) }
 
-      // const inputBeef = new Beef()
-      // inputBeef.mergeBeef(selectedTask.beef as number[])
-
-      const txid = selectedTask.outpoint.split('.')[0]
-      // const loadedBeef = Beef.fromBinary(selectedTask.beef as number[])
-      // const isValid = loadedBeef.isValid()
-      // if (!isValid) {
-      //   console.log(loadedBeef.toLogString())
-      //   throw new Error('The existing BEEF for this task is not valid!')
-      // }
-
       // If you want an atomic BEEF that includes the final TX `txid` plus its ancestors:
       // const atomicBEEF = loadedBeef.toBinaryAtomic(txid)
       const loadedBeef = Beef.fromBinary(selectedTask.beef as number[])
-      const ok = await loadedBeef.verify(await new Services('main').getChainTracker(), true)
-      // const txTest = Transaction.fromBEEF(selectedTask.beef as number[], txid)
+  
       const { signableTransaction } = await walletClient.createAction({
         description,
         // These are inputs, which unlock Bitcoin tokens.
@@ -298,7 +282,7 @@ const App: React.FC = () => {
 
       // Now, we're going to use the unlocking puzle that PushDrop has prepared
       // for us, so that the user can get their Bitcoins back.This is another
-      // "Action", which is just a Bitcoin transaction. TODOMATT rewrite this section's comments
+      // "Action", which is just a Bitcoin transaction. 
       const signResult = await walletClient.signAction({
         reference: signableTransaction.reference,
         spends: {
@@ -308,10 +292,6 @@ const App: React.FC = () => {
         }
       })
       console.log(signResult)
-
-      // if (r.log != null && r.log !== '') { TODOMATT logging here and 2 lines up?
-      //   console.log(stampLogFormat(r.log))
-      // }
 
       // Finally, we let the user know about the good news, and that their
       // completed ToDo token has been removed from their list! The satoshis
@@ -342,7 +322,7 @@ const App: React.FC = () => {
         // user's current ToDo tokens from their basket. Tokens are just a way
         // to represent something of value, like a task that needs to be
         // completed.
-        // This function will only get tokens that are active on the list, not already complete TODOMATT CHECK THIS
+
         const tasksFromBasket = await walletClient.listOutputs({
           // The name of the basket where the tokens are kept
           basket: 'todo tokens',
