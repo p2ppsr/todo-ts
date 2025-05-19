@@ -2,7 +2,7 @@ import { WalletClient } from '@bsv/sdk'
 
 export default async function checkForMetaNetClient (): Promise<number> {
   try {
-    const result = (await new WalletClient('auto', 'non-admin.com').getNetwork()).network
+    const result = (await new WalletClient().getNetwork()).network
     if (result === 'mainnet' || result === 'testnet') {
       return 1
     } else {
