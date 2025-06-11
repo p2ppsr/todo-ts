@@ -18,16 +18,13 @@ import AddIcon from '@mui/icons-material/Add'
 import GitHubIcon from '@mui/icons-material/GitHub'
 import useAsyncEffect from 'use-async-effect'
 import NoMncModal from './components/NoMncModal/NoMncModal'
-import { WalletClient, PushDrop, Utils, Transaction, LockingScript, type WalletOutput, Beef, TransactionOutput, BeefTx } from '@bsv/sdk'
+import { WalletClient, PushDrop, Utils, Transaction, LockingScript, type WalletOutput } from '@bsv/sdk'
 import checkForMetaNetClient from './utils/checkForMetaNetClient'
 import { type Task } from './types/types'
-// This stylesheet also uses this for themeing.
+// This stylesheet also uses this for theming.
 import './App.scss'
-import { Services } from '@bsv/wallet-toolbox-client'
 
 // This is the namespace address for the ToDo protocol
-// You can create your own Bitcoin address to use, and customize this protocol
-// for your own needs.
 const TODO_PROTO_ADDR = '1ToDoDtKreEzbHYKFjmoBuduFmSXXUGZG'
 
 // These are some basic styling rules for the React application.
@@ -108,7 +105,7 @@ const App: React.FC = () => {
         return
       }
       if (createAmount < 1) {
-        toast.error('The amount must be more than 1 satoshis!')
+        toast.error('The amount must at least 1 satoshi!')
         return
       }
 
@@ -135,7 +132,7 @@ const App: React.FC = () => {
       })).ciphertext
 
       // Here's the part where we create the new Bitcoin token.
-      // This uses a library called PushDrop, which lets you attach data
+      // This uses a class called PushDrop, which lets you attach data
       // payloads to Bitcoin token outputs.Then, you can redeem / unlock the
       // tokens later.
       const pushdrop = new PushDrop(walletClient)
@@ -144,7 +141,7 @@ const App: React.FC = () => {
           // For more info on these fields, look at the ToDo protocol document
           // (PROTOCOL.md). Note that the PushDrop library handles the public
           // key, signature, and OP_DROP fields automatically.
-          Utils.toArray(TODO_PROTO_ADDR, 'utf8') as number[], // TODO protocol namespace address TODOMATT remove the as number[] after updated sdk
+          Utils.toArray(TODO_PROTO_ADDR, 'utf8'),
           encryptedTask // TODO task (encrypted)
         ],
         // The same "todo list" protocol and key ID can be used to sign and
@@ -185,10 +182,6 @@ const App: React.FC = () => {
         // tense, for the user's future reference.
         description: `Create a TODO task: ${createTask}`
       })
-
-      // if (newToDoToken.log != null && newToDoToken.log !== '') { // TODOMATT what should i do about logging here?
-      //   console.log(stampLogFormat(newToDoToken.log))
-      // }
 
       // Now, we just let the user know the good news! Their token has been
       // created, and added to the list.
@@ -233,28 +226,12 @@ const App: React.FC = () => {
       let description = `Complete a TODO task: "${selectedTask.task}"`
       if (description.length > 128) { description = description.substring(0, 128) }
 
-      // const inputBeef = new Beef()
-      // inputBeef.mergeBeef(selectedTask.beef as number[])
-
-      const txid = selectedTask.outpoint.split('.')[0]
-      // const loadedBeef = Beef.fromBinary(selectedTask.beef as number[])
-      // const isValid = loadedBeef.isValid()
-      // if (!isValid) {
-      //   console.log(loadedBeef.toLogString())
-      //   throw new Error('The existing BEEF for this task is not valid!')
-      // }
-
-      // If you want an atomic BEEF that includes the final TX `txid` plus its ancestors:
-      // const atomicBEEF = loadedBeef.toBinaryAtomic(txid)
-      const loadedBeef = Beef.fromBinary(selectedTask.beef as number[])
-      const ok = await loadedBeef.verify(await new Services('main').getChainTracker(), true)
-      // const txTest = Transaction.fromBEEF(selectedTask.beef as number[], txid)
       const { signableTransaction } = await walletClient.createAction({
         description,
         // These are inputs, which unlock Bitcoin tokens.
         // The input comes from the previous ToDo token, which we're now
         // completing, redeeming and spending.
-        inputBEEF: loadedBeef.toBinary(),
+        inputBEEF: selectedTask.beef,
         inputs: [{
           // Spending descriptions tell the user why this input was redeemed
           inputDescription: 'Complete a ToDo list item',
@@ -264,6 +241,7 @@ const App: React.FC = () => {
           unlockingScriptLength: 73
         }],
         options: {
+          acceptDelayedBroadcast: false,
           randomizeOutputs: false
         }
       })
@@ -273,7 +251,7 @@ const App: React.FC = () => {
       }
       const partialTx = Transaction.fromBEEF(signableTransaction.tx)
 
-      // Here, we're using the PushDrop library to unlcok / redeem the PushDrop
+      // Here, we're using the PushDrop library to unlock / redeem the PushDrop
       // token that was previously created. By providing this information,
       // PushDrop can "unlock" and spend the token. When the token gets spent,
       // the user gets their bitcoins back, and the ToDo token is removed from
@@ -296,9 +274,8 @@ const App: React.FC = () => {
 
       const unlockingScript = await unlocker.sign(partialTx, 0)
 
-      // Now, we're going to use the unlocking puzle that PushDrop has prepared
-      // for us, so that the user can get their Bitcoins back.This is another
-      // "Action", which is just a Bitcoin transaction. TODOMATT rewrite this section's comments
+      // Now, we're going to use the unlocking puzzle that PushDrop has prepared
+      // for us, so that the user can get their Bitcoins back.
       const signResult = await walletClient.signAction({
         reference: signableTransaction.reference,
         spends: {
@@ -309,13 +286,9 @@ const App: React.FC = () => {
       })
       console.log(signResult)
 
-      // if (r.log != null && r.log !== '') { TODOMATT logging here and 2 lines up?
-      //   console.log(stampLogFormat(r.log))
-      // }
-
       // Finally, we let the user know about the good news, and that their
       // completed ToDo token has been removed from their list! The satoshis
-      // have now been unlocked, and are back in their posession.
+      // have now been unlocked, and are back in their possession.
       toast.dark('Congrats! Task complete 🎉')
       setTasks((oldTasks) => {
         const index = oldTasks.findIndex(x => x === selectedTask)
@@ -342,17 +315,16 @@ const App: React.FC = () => {
         // user's current ToDo tokens from their basket. Tokens are just a way
         // to represent something of value, like a task that needs to be
         // completed.
-        // This function will only get tokens that are active on the list, not already complete TODOMATT CHECK THIS
         const tasksFromBasket = await walletClient.listOutputs({
           // The name of the basket where the tokens are kept
           basket: 'todo tokens',
-          // Also get the envelope needed if we complete (spend) the ToDo token
+          // Also get the transaction data needed if we complete (spend) the ToDo token
           include: 'entire transactions'
         })
         // Now that we have the data (in the tasksFromBasket variable), we will
         // decode and decrypt the tasks we got from the basket.When the tasks
         // were created, they were encrypted so that only this user could read
-        // them.Here, the encryption process is reversed.
+        // them. Here, the encryption process is reversed.
         let txid: string
         const decryptedTasksResults = await Promise.all(tasksFromBasket.outputs.map(async (task: WalletOutput, i: number) => {
           try {
@@ -361,7 +333,6 @@ const App: React.FC = () => {
             const lockingScript = tx!.outputs[0].lockingScript
 
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            // const lockingScript = parsedTx.outputs[i].lockingScript
             const decodedTask = PushDrop.decode(lockingScript)
             const encryptedTask = decodedTask.fields[1]
             const decryptedTaskNumArray =
@@ -390,7 +361,6 @@ const App: React.FC = () => {
           (result): result is Task => result !== null
         )
 
-
         // We reverse the list, so the newest tasks show up at the top
         setTasks(decryptedTasks.reverse())
       } catch (e) {
@@ -398,7 +368,7 @@ const App: React.FC = () => {
         // user didn't give our app the right permissions, and we couldn't use
         // the "todo list" protocol.
 
-        // Check if the error code is related to missing MNC and supress.
+        // Check if the error code is related to missing MNC and suppress.
         // MNC is being polled until it is launched so no error message is required.
         const errorCode = (e as any).code
         if (errorCode !== 'ERR_NO_METANET_IDENTITY') {
@@ -411,10 +381,8 @@ const App: React.FC = () => {
     })()
   }, [])
 
-  // The rest of this file just contains some UI code. All the juicy
-  // Bitcoin - related stuff is above.
-
-  // ----------
+  // The rest of this file just contains some UI code.
+  // ----------------------------------------------------------------------
 
   // Opens the completion dialog for the selected task
   const openCompleteModal = (task: Task) => () => {
@@ -441,7 +409,7 @@ const App: React.FC = () => {
           <Typography variant='h6' component='div' sx={{ flexGrow: 1 }}>
             ToDo List — Get Rewarded!
           </Typography>
-          <GitHubIconStyle onClick={() => window.open('https://github.com/p2ppsr/todo-react', '_blank')}>
+          <GitHubIconStyle onClick={() => window.open('https://github.com/p2ppsr/todo-ts', '_blank')}>
             <GitHubIcon />
           </GitHubIconStyle>
         </Toolbar>
