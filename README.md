@@ -1,6 +1,16 @@
-# BSV Project
+# ToDo List — Get Rewarded!
 
-Standard BSV project structure.
+Create and complete TODO items, with a reward.
+
+A deployment of the master branch of this repository is at [todo.metanet.app](https://todo.metanet.app)
+
+## Overview
+
+This TODO list application goes beyond the classic demo traditionally used to teach people the basics of UI libraries. It showcases Metanet technologies like tokenization, identity, encryption and state management. To learn more, [check out the accompanying tutorial series](https://docs.projectbabbage.com/docs/quickstarts/your-first-bsv-app).
+
+To learn more about building Bitcoin-powered applications for the Metanet with these tools, head over to the [Babbage Docs](https://docs.projectbabbage.com).
+
+## Standard BSV project structure.
 
 Helpful Links:
 
