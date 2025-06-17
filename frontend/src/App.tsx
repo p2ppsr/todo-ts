@@ -179,7 +179,7 @@ const App: React.FC = () => {
         }],
         options: {
           randomizeOutputs: false,
-          acceptDelayedBroadcast: false
+          acceptDelayedBroadcast: true
         },
         // Describe the Actions that your app facilitates, in the present
         // tense, for the user's future reference.
@@ -241,7 +241,7 @@ const App: React.FC = () => {
           unlockingScriptLength: 73
         }],
         options: {
-          acceptDelayedBroadcast: false,
+          acceptDelayedBroadcast: true,
           randomizeOutputs: false
         }
       })
