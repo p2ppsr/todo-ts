@@ -11,5 +11,22 @@
   "start_url": ".",
   "display": "standalone",
   "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "background_color": "#ffffff",
+  "babbage": {
+    "groupPermissions": {
+      "protocolPermissions": [
+        {
+          "protocolID": [0, "todo list"],
+          "counterparty": "...",
+          "description": "For creating claiming, encrypting, and decrypting todo tokens"
+        }
+      ],
+      "basketAccess": [
+        {
+          "basket": "todo tokens",
+          "description": "For tracking todo tokens"
+        }
+      ]
+    }
+  }
 }

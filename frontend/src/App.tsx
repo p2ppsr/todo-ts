@@ -83,6 +83,7 @@ const App: React.FC = () => {
         } else {
           setIsMncMissing(false) // Ensure modal is closed if MNC is found
           clearInterval(intervalId)
+          walletClient.waitForAuthentication()
         }
       }).catch(error => {
         console.error('Error checking for MetaNet Client:', error)
