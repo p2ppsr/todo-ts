@@ -17,7 +17,7 @@
       "protocolPermissions": [
         {
           "protocolID": [0, "todo list"],
-          "counterparty": "...",
+          "counterparty": "self",
           "description": "For creating claiming, encrypting, and decrypting todo tokens"
         }
       ],
