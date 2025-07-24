@@ -1,6 +1,6 @@
 {
-  "short_name": "TODO",
-  "name": "TODO",
+  "short_name": "ToDo",
+  "name": "ToDo",
   "icons": [
     {
       "src": "favicon.ico",
@@ -16,15 +16,18 @@
     "groupPermissions": {
       "protocolPermissions": [
         {
-          "protocolID": [0, "todo list"],
+          "protocolID": [
+            1,
+            "todo list"
+          ],
           "counterparty": "self",
-          "description": "For creating claiming, encrypting, and decrypting todo tokens"
+          "description": "For creating and redeeming ToDo list items"
         }
       ],
       "basketAccess": [
         {
           "basket": "todo tokens",
-          "description": "For tracking todo tokens"
+          "description": "To display ToDo list items"
         }
       ]
     }
