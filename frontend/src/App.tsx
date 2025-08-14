@@ -15,7 +15,7 @@ import 'react-toastify/dist/ReactToastify.css'
 import {
   AppBar, Toolbar, List, ListItem, ListItemText, ListItemIcon, Checkbox, Dialog,
   DialogTitle, DialogContent, DialogContentText, DialogActions, TextField,
-  Button, Fab, LinearProgress, Typography, IconButton, Grid, Pagination, Box
+  Button, Fab, LinearProgress, Typography, IconButton, Grid
 } from '@mui/material'
 import { styled } from '@mui/system'
 import AddIcon from '@mui/icons-material/Add'
@@ -31,7 +31,6 @@ import './App.scss'
 const TODO_PROTO_ADDR = '1ToDoDtKreEzbHYKFjmoBuduFmSXXUGZG'
 const PROTOCOL_ID: WalletProtocol = [0, 'todo list']
 const KEY_ID = '1'
-const PAGE_SIZE = 10
 const DEFAULT_CREATE_AMOUNT = 1 // SAT
 
 // These are some basic styling rules for the React application.
@@ -75,12 +74,6 @@ const App: React.FC = () => {
   const [completeOpen, setCompleteOpen] = useState<boolean>(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [completeLoading, setCompleteLoading] = useState<boolean>(false)
-
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState<number>(1)
-  const [totalTasks, setTotalTasks] = useState<number>(0)
-  const [pageSize] = useState<number>(PAGE_SIZE)
-  const [totalPages, setTotalPages] = useState<number>(0)
 
   // Run a 1s interval for checking if MNC is running
   useAsyncEffect(() => {
@@ -204,22 +197,7 @@ const App: React.FC = () => {
       }
 
       // Add the new task to the beginning of the current list (newest first)
-      // and update pagination info
-      if (currentPage === 1) {
-        // If we're on page 1, add to the beginning of the current list
-        setTasks([newTask, ...tasks])
-        // If this makes the page exceed pageSize, remove the last item
-        if (tasks.length >= pageSize) {
-          setTasks(prev => prev.slice(0, pageSize))
-        }
-      }
-
-      // Update total count and pagination
-      setTotalTasks(prev => {
-        const newTotal = prev + 1
-        setTotalPages(Math.ceil(newTotal / pageSize))
-        return newTotal
-      })
+      setTasks([newTask, ...tasks])
 
       setCreateLoading(false)
       // Now, we just let the user know the good news! Their token has been
@@ -322,19 +300,6 @@ const App: React.FC = () => {
       // Performance optimization: directly remove the completed task from current list
       setTasks(prevTasks => prevTasks.filter(task => task !== selectedTask))
 
-      // Update total count and pagination
-      setTotalTasks(prev => {
-        const newTotal = Math.max(prev - 1, 0)
-        setTotalPages(Math.ceil(newTotal / pageSize))
-        return newTotal
-      })
-
-      // Handle edge case: if current page becomes empty and we're not on page 1
-      if (tasks.length === 1 && currentPage > 1) {
-        // Navigate to the previous page since current page will be empty
-        setCurrentPage(prev => prev - 1)
-      }
-
       setSelectedTask(null)
     } catch (e) {
       toast.error(`Error completing task: ${(e as Error).message}`)
@@ -347,22 +312,9 @@ const App: React.FC = () => {
   // This loads a user's existing ToDo tokens from their token basket
   // whenever the page loads. This populates their ToDo list.
   // A basket is just a way to keep track of different kinds of Bitcoin tokens.
-  const loadTasks = async (page: number = 1) => {
+  const loadTasks = async () => {
     try {
       setTasksLoading(true)
-
-      // First, get total count to calculate reverse offset for newest-first ordering
-      const totalCount = await walletClient.listOutputs({
-        basket: 'todo tokens',
-        limit: 1 // Just get count, no actual outputs
-      })
-
-      // Calculate reverse offset to show newest tasks first
-      // For page 1: show items (total-pageSize) to (total-1) 
-      // For page 2: show items (total-2*pageSize) to (total-pageSize-1), etc.
-      const totalTasks = totalCount.totalOutputs
-      const reverseOffset = Math.max(0, totalTasks - (page * pageSize))
-      const actualLimit = Math.min(pageSize, totalTasks - reverseOffset)
 
       // We use a function called "listOutputs" to fetch this
       // user's current ToDo tokens from their basket. Tokens are just a way
@@ -373,12 +325,8 @@ const App: React.FC = () => {
         basket: 'todo tokens',
         // Also get the transaction data needed if we complete (spend) the ToDo token
         include: 'entire transactions',
-        limit: actualLimit,
-        offset: reverseOffset
+        limit: 1000
       })
-      // Update pagination info
-      setTotalTasks(totalTasks)
-      setTotalPages(Math.ceil(totalTasks / pageSize))
 
       // Now that we have the data (in the tasksFromBasket variable), we will
       // decode and decrypt the tasks we got from the basket. When the tasks
@@ -419,7 +367,7 @@ const App: React.FC = () => {
         (result): result is Task => result !== null
       )
 
-      // Tasks are already in newest-first order due to reverse offset calculation
+      // We reverse the list, so the newest tasks show up at the top
       setTasks(decryptedTasks.reverse())
     } catch (e) {
       // Any larger errors are also handled. If these steps fail, maybe the
@@ -438,15 +386,10 @@ const App: React.FC = () => {
     }
   }
 
-  // Load tasks when component mounts or page changes
+  // Load tasks when component mounts
   useEffect(() => {
-    void loadTasks(currentPage)
-  }, [currentPage])
-
-  // Handle page change
-  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
-    setCurrentPage(value)
-  }
+    void loadTasks()
+  }, [])
 
   // The rest of this file just contains some UI code.
   // ----------------------------------------------------------------------
@@ -494,7 +437,7 @@ const App: React.FC = () => {
         : (
           <>
             <List>
-              {tasks.length === 0 && totalTasks === 0 && (
+              {tasks.length === 0 && (
                 <NoItems container direction='column' justifyContent='center' alignItems='center'>
                   <Grid item justifyContent="center" alignItems="center">
                     <Typography variant='h4'>No ToDo Items</Typography>
@@ -516,30 +459,6 @@ const App: React.FC = () => {
                 </ListItem>
               ))}
             </List>
-
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <Box display="flex" justifyContent="center" alignItems="center" sx={{ py: 2, mb: 2 }}>
-                <Pagination
-                  count={totalPages}
-                  page={currentPage}
-                  onChange={handlePageChange}
-                  color="primary"
-                  size="large"
-                  showFirstButton
-                  showLastButton
-                />
-              </Box>
-            )}
-
-            {/* Task count info */}
-            {totalTasks > 0 && (
-              <Box display="flex" justifyContent="center" sx={{ pb: 2 }}>
-                <Typography variant="body2" color="textSecondary">
-                  Showing {Math.min((currentPage - 1) * pageSize + 1, totalTasks)} - {Math.min(currentPage * pageSize, totalTasks)} of {totalTasks} tasks
-                </Typography>
-              </Box>
-            )}
           </>
         )
       }
