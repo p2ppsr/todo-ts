@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /**
  * Main React component for the ToDo app.
  * 
@@ -9,9 +8,8 @@
  * 
  * Protocol IDs used: `[0, 'todo list']`, keyID: `'1'`.
  */
-import React, { useState, useEffect, type FormEvent } from 'react'
-import { ToastContainer, toast } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
+import React, { useState, useEffect, type FormEvent, type ChangeEvent } from 'react'
+import { toast } from 'react-toastify'
 import {
   AppBar, Toolbar, List, ListItem, ListItemText, ListItemIcon, Checkbox, Dialog,
   DialogTitle, DialogContent, DialogContentText, DialogActions, TextField,
@@ -20,12 +18,11 @@ import {
 import { styled } from '@mui/system'
 import AddIcon from '@mui/icons-material/Add'
 import GitHubIcon from '@mui/icons-material/GitHub'
-import useAsyncEffect from 'use-async-effect'
-import { NoMncModal, checkForMetaNetClient } from 'metanet-react-prompt'
 import { WalletClient, PushDrop, Utils, Transaction, LockingScript, type WalletOutput, WalletProtocol } from '@bsv/sdk'
 import { type Task } from './types/types'
 // This stylesheet also uses this for theming.
 import './App.scss'
+import BabbageGo from '@babbage/go'
 
 // This is the namespace address for the ToDo protocol
 const TODO_PROTO_ADDR = '1ToDoDtKreEzbHYKFjmoBuduFmSXXUGZG'
@@ -60,11 +57,10 @@ const GitHubIconStyle = styled(IconButton)({
   color: '#ffffff'
 })
 
-const walletClient = new WalletClient()
+const walletClient = new BabbageGo(new WalletClient())
 
 const App: React.FC = () => {
   // These are some state variables that control the app's interface.
-  const [isMncMissing, setIsMncMissing] = useState<boolean>(false)
   const [createOpen, setCreateOpen] = useState<boolean>(false)
   const [createTask, setCreateTask] = useState<string>('')
   const [createAmount, setCreateAmount] = useState<number>(DEFAULT_CREATE_AMOUNT)
@@ -74,27 +70,6 @@ const App: React.FC = () => {
   const [completeOpen, setCompleteOpen] = useState<boolean>(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [completeLoading, setCompleteLoading] = useState<boolean>(false)
-
-  // Run a 1s interval for checking if MNC is running
-  useAsyncEffect(() => {
-    const intervalId = setInterval(() => {
-      checkForMetaNetClient().then(hasMNC => {
-        if (hasMNC === 0) {
-          setIsMncMissing(true) // Open modal if MNC is not found
-        } else {
-          setIsMncMissing(false) // Ensure modal is closed if MNC is found
-          clearInterval(intervalId)
-        }
-      }).catch(error => {
-        console.error('Error checking for MetaNet Client:', error)
-      })
-    }, 1000)
-
-    // Return a cleanup function
-    return () => {
-      clearInterval(intervalId)
-    }
-  }, [])
 
   /**
    * Handle submission of a new ToDo task.
@@ -332,14 +307,15 @@ const App: React.FC = () => {
       // decode and decrypt the tasks we got from the basket. When the tasks
       // were created, they were encrypted so that only this user could read
       // them.
-      let txid: string
       const decryptedTasksResults = await Promise.all(tasksFromBasket.outputs.map(async (task: WalletOutput) => {
         try {
-          txid = task.outpoint.split('.')[0]
+          const txid = task.outpoint.split('.')[0]
           const tx = Transaction.fromBEEF(tasksFromBasket.BEEF as number[], txid)
-          const lockingScript = tx!.outputs[0].lockingScript
+          if (tx === undefined) {
+            throw new Error('Missing transaction data for task')
+          }
+          const lockingScript = tx.outputs[0].lockingScript
 
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           const decodedTask = PushDrop.decode(lockingScript)
           const encryptedTask = decodedTask.fields[1]
           const decryptedTaskNumArray =
@@ -374,13 +350,8 @@ const App: React.FC = () => {
       // user didn't give our app the right permissions, and we couldn't use
       // the "todo list" protocol.
 
-      // Check if the error code is related to missing MNC and suppress.
-      // MNC is being polled until it is launched so no error message is required.
-      const errorCode = (e as any).code
-      if (errorCode !== 'ERR_NO_METANET_IDENTITY') {
-        toast.error(`Failed to load ToDo tasks! Error: ${(e as Error).message}`)
-        console.error(e)
-      }
+      toast.error(`Failed to load ToDo tasks! Error: ${(e as Error).message}`)
+      console.error(e)
     } finally {
       setTasksLoading(false)
     }
@@ -402,18 +373,6 @@ const App: React.FC = () => {
 
   return (
     <>
-      <NoMncModal appName='ToDo List' open={isMncMissing} onClose={() => { setIsMncMissing(false) }} />
-      <ToastContainer
-        position='top-right'
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
       <AppBar position='static'>
         <Toolbar>
           <Typography variant='h6' component='div' sx={{ flexGrow: 1 }}>
@@ -452,10 +411,10 @@ const App: React.FC = () => {
                   </Grid>
                 </NoItems>
               )}
-              {tasks.map((x, i) => (
-                <ListItem key={i} button onClick={openCompleteModal(x)}>
+              {tasks.map((task) => (
+                <ListItem key={task.outpoint} button onClick={openCompleteModal(task)}>
                   <ListItemIcon><Checkbox checked={false} /></ListItemIcon>
-                  <ListItemText primary={x.task} secondary={`${x.sats} satoshis`} />
+                  <ListItemText primary={task.task} secondary={`${task.sats} satoshis`} />
                 </ListItem>
               ))}
             </List>
@@ -464,16 +423,7 @@ const App: React.FC = () => {
       }
 
       <Dialog open={createOpen} onClose={() => { setCreateOpen(false) }}>
-        <form onSubmit={(e) => {
-          e.preventDefault()
-          void (async () => {
-            try {
-              await handleCreateSubmit(e)
-            } catch (error) {
-              console.error('Error in form submission:', error)
-            }
-          })()
-        }}>
+        <form onSubmit={handleCreateSubmit}>
           <DialogTitle>Create a Task</DialogTitle>
           <DialogContent>
             <DialogContentText paragraph>
@@ -482,7 +432,7 @@ const App: React.FC = () => {
             <TextField
               multiline rows={3} fullWidth autoFocus
               label='Task to complete'
-              onChange={(e: { target: { value: React.SetStateAction<string> } }) => { setCreateTask(e.target.value) }}
+              onChange={(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => { setCreateTask(event.target.value) }}
               value={createTask}
             />
             <br /><br />
@@ -491,7 +441,7 @@ const App: React.FC = () => {
               type='number'
               inputProps={{ min: 1 }}
               label='Completion amount'
-              onChange={(e: { target: { value: any } }) => { setCreateAmount(Number(e.target.value)) }}
+              onChange={(event: ChangeEvent<HTMLInputElement>) => { setCreateAmount(Number(event.target.value)) }}
               value={createAmount}
             />
           </DialogContent>
@@ -508,16 +458,7 @@ const App: React.FC = () => {
       </Dialog>
 
       <Dialog open={completeOpen} onClose={() => { setCompleteOpen(false) }}>
-        <form onSubmit={(e) => {
-          e.preventDefault()
-          void (async () => {
-            try {
-              await handleCompleteSubmit(e)
-            } catch (error) {
-              console.error('Error in form submission:', error)
-            }
-          })()
-        }}>
+        <form onSubmit={handleCompleteSubmit}>
           <DialogTitle>Complete &quot;{selectedTask?.task}&quot;?</DialogTitle>
           <DialogContent>
             <DialogContentText paragraph>
