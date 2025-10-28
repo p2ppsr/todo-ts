@@ -57,7 +57,7 @@ const GitHubIconStyle = styled(IconButton)({
   color: '#ffffff'
 })
 
-const walletClient = new BabbageGo(new WalletClient())
+const walletClient = new BabbageGo()
 
 const App: React.FC = () => {
   // These are some state variables that control the app's interface.
