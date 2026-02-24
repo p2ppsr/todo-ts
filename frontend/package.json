@@ -5,8 +5,8 @@
   "type": "module",
   "license": "Open BSV License",
   "dependencies": {
-    "@babbage/go": "^0.1.12",
-    "@bsv/sdk": "^1.8.7",
+    "@babbage/go": "^0.1.15",
+    "@bsv/sdk": "^2.0.4",
     "@emotion/react": "^11.13.0",
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^5.16.4",
