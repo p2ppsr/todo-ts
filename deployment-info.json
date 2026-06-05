@@ -24,17 +24,6 @@
         "frontend"
       ],
       "frontendHostingMethod": "HTTPS"
-    },
-    {
-      "name": "ClubCFG",
-      "provider": "CARS",
-      "CARSCloudURL": "https://cars.metanet.club",
-      "projectID": "570fe55e971be3aa0551b67f34553ca3",
-      "network": "mainnet",
-      "deploy": [
-        "frontend"
-      ],
-      "frontendHostingMethod": "HTTPS"
     }
   ]
 }
