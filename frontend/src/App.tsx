@@ -32,6 +32,7 @@ const DEFAULT_CREATE_AMOUNT = 1 // SAT
 const P0_PREFILL_TASK_PARAM = 'p0Task'
 const P0_PREFILL_AMOUNT_PARAM = 'p0Amount'
 const P0_PREFILL_OPEN_PARAM = 'p0OpenCreate'
+const P0_IMMEDIATE_BROADCAST_PARAM = 'p0ImmediateBroadcast'
 const P0_COMPLETE_TASK_PARAM = 'p0CompleteTask'
 
 // These are some basic styling rules for the React application.
@@ -79,6 +80,7 @@ const App: React.FC = () => {
   const [createOpen, setCreateOpen] = useState<boolean>(false)
   const [createTask, setCreateTask] = useState<string>('')
   const [createAmount, setCreateAmount] = useState<number>(DEFAULT_CREATE_AMOUNT)
+  const [createAcceptDelayedBroadcast, setCreateAcceptDelayedBroadcast] = useState<boolean>(true)
   const [createLoading, setCreateLoading] = useState<boolean>(false)
   const [tasksLoading, setTasksLoading] = useState<boolean>(true)
   const [tasks, setTasks] = useState<Task[]>([])
@@ -92,6 +94,7 @@ const App: React.FC = () => {
     const task = params.get(P0_PREFILL_TASK_PARAM)
     const amount = params.get(P0_PREFILL_AMOUNT_PARAM)
     const completeTask = params.get(P0_COMPLETE_TASK_PARAM)
+    const immediateBroadcast = params.get(P0_IMMEDIATE_BROADCAST_PARAM) === '1'
     const shouldOpen = params.get(P0_PREFILL_OPEN_PARAM) === '1' || task !== null || amount !== null
     if (!shouldOpen && completeTask === null) return
 
@@ -108,12 +111,14 @@ const App: React.FC = () => {
       }
     }
     if (shouldOpen) {
+      setCreateAcceptDelayedBroadcast(!immediateBroadcast)
       setCreateOpen(true)
     }
 
     params.delete(P0_PREFILL_TASK_PARAM)
     params.delete(P0_PREFILL_AMOUNT_PARAM)
     params.delete(P0_PREFILL_OPEN_PARAM)
+    params.delete(P0_IMMEDIATE_BROADCAST_PARAM)
     params.delete(P0_COMPLETE_TASK_PARAM)
     const nextSearch = params.toString()
     const nextUrl = `${window.location.pathname}${nextSearch.length > 0 ? `?${nextSearch}` : ''}${window.location.hash}`
@@ -215,7 +220,7 @@ const App: React.FC = () => {
         }],
         options: {
           randomizeOutputs: false,
-          acceptDelayedBroadcast: true
+          acceptDelayedBroadcast: createAcceptDelayedBroadcast
         },
         // Describe the Actions that your app facilitates, in the present
         // tense, for the user's future reference.
@@ -241,6 +246,7 @@ const App: React.FC = () => {
 
       setCreateTask('')
       setCreateAmount(DEFAULT_CREATE_AMOUNT)
+      setCreateAcceptDelayedBroadcast(true)
       setCreateOpen(false)
     } catch (e) {
       // Any errors are shown on the screen and printed in the developer console
