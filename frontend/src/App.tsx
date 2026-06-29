@@ -32,6 +32,7 @@ const DEFAULT_CREATE_AMOUNT = 1 // SAT
 const P0_PREFILL_TASK_PARAM = 'p0Task'
 const P0_PREFILL_AMOUNT_PARAM = 'p0Amount'
 const P0_PREFILL_OPEN_PARAM = 'p0OpenCreate'
+const P0_COMPLETE_TASK_PARAM = 'p0CompleteTask'
 
 // These are some basic styling rules for the React application.
 // We are using MUI (https://mui.com) for all of our UI components (i.e. buttons and dialogs etc.).
@@ -84,32 +85,51 @@ const App: React.FC = () => {
   const [completeOpen, setCompleteOpen] = useState<boolean>(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [completeLoading, setCompleteLoading] = useState<boolean>(false)
+  const [p0CompleteTask, setP0CompleteTask] = useState<string | null>(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const task = params.get(P0_PREFILL_TASK_PARAM)
     const amount = params.get(P0_PREFILL_AMOUNT_PARAM)
+    const completeTask = params.get(P0_COMPLETE_TASK_PARAM)
     const shouldOpen = params.get(P0_PREFILL_OPEN_PARAM) === '1' || task !== null || amount !== null
-    if (!shouldOpen) return
+    if (!shouldOpen && completeTask === null) return
 
-    if (task !== null) {
+    if (completeTask !== null) {
+      setP0CompleteTask(completeTask)
+    }
+    if (shouldOpen && task !== null) {
       setCreateTask(task)
     }
-    if (amount !== null) {
+    if (shouldOpen && amount !== null) {
       const parsedAmount = Number(amount)
       if (Number.isFinite(parsedAmount) && parsedAmount >= 1) {
         setCreateAmount(parsedAmount)
       }
     }
-    setCreateOpen(true)
+    if (shouldOpen) {
+      setCreateOpen(true)
+    }
 
     params.delete(P0_PREFILL_TASK_PARAM)
     params.delete(P0_PREFILL_AMOUNT_PARAM)
     params.delete(P0_PREFILL_OPEN_PARAM)
+    params.delete(P0_COMPLETE_TASK_PARAM)
     const nextSearch = params.toString()
     const nextUrl = `${window.location.pathname}${nextSearch.length > 0 ? `?${nextSearch}` : ''}${window.location.hash}`
     window.history.replaceState(null, '', nextUrl)
   }, [])
+
+  useEffect(() => {
+    if (p0CompleteTask === null || tasksLoading || completeOpen) return
+
+    const task = tasks.find(candidate => candidate.task === p0CompleteTask)
+    if (task === undefined) return
+
+    setSelectedTask(task)
+    setCompleteOpen(true)
+    setP0CompleteTask(null)
+  }, [completeOpen, p0CompleteTask, tasks, tasksLoading])
 
   /**
    * Handle submission of a new ToDo task.
