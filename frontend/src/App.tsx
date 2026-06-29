@@ -86,6 +86,7 @@ const App: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([])
   const [completeOpen, setCompleteOpen] = useState<boolean>(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [completeAcceptDelayedBroadcast, setCompleteAcceptDelayedBroadcast] = useState<boolean>(true)
   const [completeLoading, setCompleteLoading] = useState<boolean>(false)
   const [p0CompleteTask, setP0CompleteTask] = useState<string | null>(null)
 
@@ -100,6 +101,7 @@ const App: React.FC = () => {
 
     if (completeTask !== null) {
       setP0CompleteTask(completeTask)
+      setCompleteAcceptDelayedBroadcast(!immediateBroadcast)
     }
     if (shouldOpen && task !== null) {
       setCreateTask(task)
@@ -286,7 +288,7 @@ const App: React.FC = () => {
           unlockingScriptLength: 73
         }],
         options: {
-          acceptDelayedBroadcast: true,
+          acceptDelayedBroadcast: completeAcceptDelayedBroadcast,
           randomizeOutputs: false
         }
       })
@@ -342,6 +344,7 @@ const App: React.FC = () => {
       setTasks(prevTasks => prevTasks.filter(task => task !== selectedTask))
 
       setSelectedTask(null)
+      setCompleteAcceptDelayedBroadcast(true)
     } catch (e) {
       toast.error(`Error completing task: ${(e as Error).message}`)
       console.error(e)
