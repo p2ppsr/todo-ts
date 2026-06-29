@@ -29,6 +29,9 @@ const TODO_PROTO_ADDR = '1ToDoDtKreEzbHYKFjmoBuduFmSXXUGZG'
 const PROTOCOL_ID: WalletProtocol = [0, 'todo list']
 const KEY_ID = '1'
 const DEFAULT_CREATE_AMOUNT = 1 // SAT
+const P0_PREFILL_TASK_PARAM = 'p0Task'
+const P0_PREFILL_AMOUNT_PARAM = 'p0Amount'
+const P0_PREFILL_OPEN_PARAM = 'p0OpenCreate'
 
 // These are some basic styling rules for the React application.
 // We are using MUI (https://mui.com) for all of our UI components (i.e. buttons and dialogs etc.).
@@ -81,6 +84,32 @@ const App: React.FC = () => {
   const [completeOpen, setCompleteOpen] = useState<boolean>(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [completeLoading, setCompleteLoading] = useState<boolean>(false)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const task = params.get(P0_PREFILL_TASK_PARAM)
+    const amount = params.get(P0_PREFILL_AMOUNT_PARAM)
+    const shouldOpen = params.get(P0_PREFILL_OPEN_PARAM) === '1' || task !== null || amount !== null
+    if (!shouldOpen) return
+
+    if (task !== null) {
+      setCreateTask(task)
+    }
+    if (amount !== null) {
+      const parsedAmount = Number(amount)
+      if (Number.isFinite(parsedAmount) && parsedAmount >= 1) {
+        setCreateAmount(parsedAmount)
+      }
+    }
+    setCreateOpen(true)
+
+    params.delete(P0_PREFILL_TASK_PARAM)
+    params.delete(P0_PREFILL_AMOUNT_PARAM)
+    params.delete(P0_PREFILL_OPEN_PARAM)
+    const nextSearch = params.toString()
+    const nextUrl = `${window.location.pathname}${nextSearch.length > 0 ? `?${nextSearch}` : ''}${window.location.hash}`
+    window.history.replaceState(null, '', nextUrl)
+  }, [])
 
   /**
    * Handle submission of a new ToDo task.
@@ -443,6 +472,7 @@ const App: React.FC = () => {
             <TextField
               multiline rows={3} fullWidth autoFocus
               label='Task to complete'
+              inputProps={{ 'data-testid': 'p0-todo-task-input' }}
               onChange={(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => { setCreateTask(event.target.value) }}
               value={createTask}
             />
@@ -450,7 +480,7 @@ const App: React.FC = () => {
             <TextField
               fullWidth
               type='number'
-              inputProps={{ min: 1 }}
+              inputProps={{ min: 1, 'data-testid': 'p0-todo-amount-input' }}
               label='Completion amount'
               onChange={(event: ChangeEvent<HTMLInputElement>) => { setCreateAmount(Number(event.target.value)) }}
               value={createAmount}
@@ -460,8 +490,8 @@ const App: React.FC = () => {
             ? (<LoadingBar />)
             : (
               <DialogActions>
-                <Button onClick={() => { setCreateOpen(false) }}>Cancel</Button>
-                <Button type='submit'>OK</Button>
+                <Button data-testid='p0-todo-create-cancel' onClick={() => { setCreateOpen(false) }}>Cancel</Button>
+                <Button data-testid='p0-todo-create-submit' type='submit'>OK</Button>
               </DialogActions>
             )
           }
