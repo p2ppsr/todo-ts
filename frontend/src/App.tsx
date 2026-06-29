@@ -91,44 +91,63 @@ const App: React.FC = () => {
   const [p0CompleteTask, setP0CompleteTask] = useState<string | null>(null)
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const task = params.get(P0_PREFILL_TASK_PARAM)
-    const amount = params.get(P0_PREFILL_AMOUNT_PARAM)
-    const completeTask = params.get(P0_COMPLETE_TASK_PARAM)
-    const immediateBroadcast = params.get(P0_IMMEDIATE_BROADCAST_PARAM) === '1'
-    const shouldOpen = params.get(P0_PREFILL_OPEN_PARAM) === '1' || task !== null || amount !== null
-    if (!shouldOpen && completeTask === null) return
+    let lastHandledSearch = ''
 
-    if (completeTask !== null) {
-      setP0CompleteTask(completeTask)
-      setCompleteAcceptDelayedBroadcast(!immediateBroadcast)
-    }
-    if (shouldOpen && task !== null) {
-      setCreateTask(task)
-    }
-    if (shouldOpen && amount !== null) {
-      const parsedAmount = Number(amount)
-      if (Number.isFinite(parsedAmount) && parsedAmount >= 1) {
-        setCreateAmount(parsedAmount)
+    const applyP0Params = () => {
+      const search = window.location.search
+      if (!search.includes('p0') || search === lastHandledSearch) return
+      lastHandledSearch = search
+
+      const params = new URLSearchParams(window.location.search)
+      const task = params.get(P0_PREFILL_TASK_PARAM)
+      const amount = params.get(P0_PREFILL_AMOUNT_PARAM)
+      const completeTask = params.get(P0_COMPLETE_TASK_PARAM)
+      const immediateBroadcast = params.get(P0_IMMEDIATE_BROADCAST_PARAM) === '1'
+      const shouldOpen = params.get(P0_PREFILL_OPEN_PARAM) === '1' || task !== null || amount !== null
+      if (!shouldOpen && completeTask === null) return
+
+      if (completeTask !== null) {
+        setP0CompleteTask(completeTask)
+        setCompleteAcceptDelayedBroadcast(!immediateBroadcast)
       }
-    }
-    if (shouldOpen) {
-      setCreateAcceptDelayedBroadcast(!immediateBroadcast)
-      setCreateOpen(true)
+      if (shouldOpen && task !== null) {
+        setCreateTask(task)
+      }
+      if (shouldOpen && amount !== null) {
+        const parsedAmount = Number(amount)
+        if (Number.isFinite(parsedAmount) && parsedAmount >= 1) {
+          setCreateAmount(parsedAmount)
+        }
+      }
+      if (shouldOpen) {
+        setCreateAcceptDelayedBroadcast(!immediateBroadcast)
+        setCreateOpen(true)
+      }
+
+      params.delete(P0_PREFILL_TASK_PARAM)
+      params.delete(P0_PREFILL_AMOUNT_PARAM)
+      params.delete(P0_PREFILL_OPEN_PARAM)
+      params.delete(P0_IMMEDIATE_BROADCAST_PARAM)
+      params.delete(P0_COMPLETE_TASK_PARAM)
+      const nextSearch = params.toString()
+      const nextUrl = `${window.location.pathname}${nextSearch.length > 0 ? `?${nextSearch}` : ''}${window.location.hash}`
+      window.history.replaceState(null, '', nextUrl)
     }
 
-    params.delete(P0_PREFILL_TASK_PARAM)
-    params.delete(P0_PREFILL_AMOUNT_PARAM)
-    params.delete(P0_PREFILL_OPEN_PARAM)
-    params.delete(P0_IMMEDIATE_BROADCAST_PARAM)
-    params.delete(P0_COMPLETE_TASK_PARAM)
-    const nextSearch = params.toString()
-    const nextUrl = `${window.location.pathname}${nextSearch.length > 0 ? `?${nextSearch}` : ''}${window.location.hash}`
-    window.history.replaceState(null, '', nextUrl)
+    applyP0Params()
+    const interval = window.setInterval(applyP0Params, 250)
+    window.addEventListener('popstate', applyP0Params)
+    window.addEventListener('hashchange', applyP0Params)
+
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('popstate', applyP0Params)
+      window.removeEventListener('hashchange', applyP0Params)
+    }
   }, [])
 
   useEffect(() => {
-    if (p0CompleteTask === null || tasksLoading || completeOpen) return
+    if (p0CompleteTask === null || tasksLoading) return
 
     const task = tasks.find(candidate => candidate.task === p0CompleteTask)
     if (task === undefined) return
@@ -136,7 +155,7 @@ const App: React.FC = () => {
     setSelectedTask(task)
     setCompleteOpen(true)
     setP0CompleteTask(null)
-  }, [completeOpen, p0CompleteTask, tasks, tasksLoading])
+  }, [p0CompleteTask, tasks, tasksLoading])
 
   /**
    * Handle submission of a new ToDo task.
@@ -529,7 +548,7 @@ const App: React.FC = () => {
 
       <Dialog open={completeOpen} onClose={() => { setCompleteOpen(false) }}>
         <form onSubmit={handleCompleteSubmit}>
-          <DialogTitle>Complete &quot;{selectedTask?.task}&quot;?</DialogTitle>
+          <DialogTitle data-testid='p0-todo-complete-title'>Complete &quot;{selectedTask?.task}&quot;?</DialogTitle>
           <DialogContent>
             <DialogContentText paragraph>
               By marking this task as complete, you&apos;ll receive back your {selectedTask?.sats} satoshis.
@@ -540,7 +559,7 @@ const App: React.FC = () => {
             : (
               <DialogActions>
                 <Button onClick={() => { setCompleteOpen(false) }}>Cancel</Button>
-                <Button type='submit'>Complete Task</Button>
+                <Button data-testid='p0-todo-complete-submit' type='submit'>Complete Task</Button>
               </DialogActions>
             )
           }
