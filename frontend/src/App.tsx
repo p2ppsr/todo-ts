@@ -34,6 +34,71 @@ const P0_PREFILL_AMOUNT_PARAM = 'p0Amount'
 const P0_PREFILL_OPEN_PARAM = 'p0OpenCreate'
 const P0_IMMEDIATE_BROADCAST_PARAM = 'p0ImmediateBroadcast'
 const P0_COMPLETE_TASK_PARAM = 'p0CompleteTask'
+const P0_TASK_CACHE_KEY = 'todo-ts:p0-task-cache:v1'
+const P0_MAX_CACHED_TASKS = 20
+
+interface P0CachedTask extends Task {
+  savedAt: number
+}
+
+type P0TaskCache = Record<string, P0CachedTask>
+
+const readP0TaskCache = (): P0TaskCache => {
+  try {
+    const rawCache = window.localStorage.getItem(P0_TASK_CACHE_KEY)
+    if (rawCache === null) return {}
+    const parsedCache = JSON.parse(rawCache)
+    if (parsedCache === null || typeof parsedCache !== 'object' || Array.isArray(parsedCache)) return {}
+    return parsedCache as P0TaskCache
+  } catch (error) {
+    console.warn('Failed to read P0 task cache:', error)
+    return {}
+  }
+}
+
+const writeP0TaskCache = (cache: P0TaskCache): void => {
+  try {
+    const entries = Object.entries(cache)
+      .sort(([, left], [, right]) => right.savedAt - left.savedAt)
+      .slice(0, P0_MAX_CACHED_TASKS)
+    window.localStorage.setItem(P0_TASK_CACHE_KEY, JSON.stringify(Object.fromEntries(entries)))
+  } catch (error) {
+    console.warn('Failed to write P0 task cache:', error)
+  }
+}
+
+const cacheP0Task = (task: Task): void => {
+  const cache = readP0TaskCache()
+  cache[task.task] = {
+    ...task,
+    savedAt: Date.now()
+  }
+  writeP0TaskCache(cache)
+}
+
+const getP0CachedTask = (taskName: string): Task | null => {
+  const cachedTask = readP0TaskCache()[taskName]
+  if (cachedTask === undefined) return null
+  const { savedAt: _savedAt, ...task } = cachedTask
+  return task
+}
+
+const removeP0CachedTask = (taskName: string): void => {
+  const cache = readP0TaskCache()
+  if (cache[taskName] === undefined) return
+  delete cache[taskName]
+  writeP0TaskCache(cache)
+}
+
+const shouldBypassInitialTaskLoad = (): boolean => {
+  const params = new URLSearchParams(window.location.search)
+  return (
+    params.has(P0_PREFILL_TASK_PARAM) ||
+    params.has(P0_PREFILL_AMOUNT_PARAM) ||
+    params.has(P0_PREFILL_OPEN_PARAM) ||
+    params.has(P0_COMPLETE_TASK_PARAM)
+  )
+}
 
 // These are some basic styling rules for the React application.
 // We are using MUI (https://mui.com) for all of our UI components (i.e. buttons and dialogs etc.).
@@ -89,6 +154,9 @@ const App: React.FC = () => {
   const [completeAcceptDelayedBroadcast, setCompleteAcceptDelayedBroadcast] = useState<boolean>(true)
   const [completeLoading, setCompleteLoading] = useState<boolean>(false)
   const [p0CompleteTask, setP0CompleteTask] = useState<string | null>(null)
+  const [createIsP0, setCreateIsP0] = useState<boolean>(false)
+  const [tasksLoadAttempted, setTasksLoadAttempted] = useState<boolean>(false)
+  const [p0BypassInitialLoad] = useState<boolean>(shouldBypassInitialTaskLoad)
 
   useEffect(() => {
     let lastHandledSearch = ''
@@ -123,6 +191,7 @@ const App: React.FC = () => {
       }
       if (shouldOpen) {
         setCreateAcceptDelayedBroadcast(!immediateBroadcast)
+        setCreateIsP0(true)
         setCreateOpen(true)
       }
 
@@ -151,8 +220,20 @@ const App: React.FC = () => {
   useEffect(() => {
     if (p0CompleteTask === null || tasksLoading) return
 
+    const cachedTask = getP0CachedTask(p0CompleteTask)
+    if (cachedTask !== null) {
+      setSelectedTask(cachedTask)
+      setCompleteOpen(true)
+      setP0CompleteTask(null)
+      return
+    }
+
     const task = tasks.find(candidate => candidate.task === p0CompleteTask)
     if (task === undefined) {
+      if (!tasksLoadAttempted) {
+        void loadTasks()
+        return
+      }
       setP0CompleteTask(null)
       return
     }
@@ -160,7 +241,7 @@ const App: React.FC = () => {
     setSelectedTask(task)
     setCompleteOpen(true)
     setP0CompleteTask(null)
-  }, [p0CompleteTask, tasks, tasksLoading])
+  }, [p0CompleteTask, tasks, tasksLoading, tasksLoadAttempted])
 
   /**
    * Handle submission of a new ToDo task.
@@ -264,6 +345,9 @@ const App: React.FC = () => {
 
       // Add the new task to the beginning of the current list (newest first)
       setTasks([newTask, ...tasks])
+      if (createIsP0) {
+        cacheP0Task(newTask)
+      }
 
       setCreateLoading(false)
       // Now, we just let the user know the good news! Their token has been
@@ -273,6 +357,7 @@ const App: React.FC = () => {
       setCreateTask('')
       setCreateAmount(DEFAULT_CREATE_AMOUNT)
       setCreateAcceptDelayedBroadcast(true)
+      setCreateIsP0(false)
       setCreateOpen(false)
     } catch (e) {
       // Any errors are shown on the screen and printed in the developer console
@@ -366,6 +451,7 @@ const App: React.FC = () => {
 
       // Performance optimization: directly remove the completed task from current list
       setTasks(prevTasks => prevTasks.filter(task => task !== selectedTask))
+      removeP0CachedTask(selectedTask.task)
 
       setSelectedTask(null)
       setCompleteAcceptDelayedBroadcast(true)
@@ -375,6 +461,16 @@ const App: React.FC = () => {
     } finally {
       setCompleteLoading(false)
     }
+  }
+
+  const openCreateModal = (): void => {
+    setCreateIsP0(false)
+    setCreateOpen(true)
+  }
+
+  const closeCreateModal = (): void => {
+    setCreateIsP0(false)
+    setCreateOpen(false)
   }
 
   // This loads a user's existing ToDo tokens from their token basket
@@ -446,12 +542,18 @@ const App: React.FC = () => {
       toast.error(`Failed to load ToDo tasks! Error: ${(e as Error).message}`)
       console.error(e)
     } finally {
+      setTasksLoadAttempted(true)
       setTasksLoading(false)
     }
   }
 
   // Load tasks when component mounts
   useEffect(() => {
+    if (p0BypassInitialLoad) {
+      setTasksLoadAttempted(false)
+      setTasksLoading(false)
+      return
+    }
     void loadTasks()
   }, [])
 
@@ -479,7 +581,7 @@ const App: React.FC = () => {
       <AppBarPlaceholder />
 
       {tasks.length >= 1 && (
-        <AddMoreFab color='primary' onClick={() => { setCreateOpen(true) }}>
+        <AddMoreFab color='primary' onClick={openCreateModal}>
           <AddIcon />
         </AddMoreFab>
       )}
@@ -498,7 +600,7 @@ const App: React.FC = () => {
                     </Typography>
                   </Grid>
                   <Grid item justifyContent="center" alignItems="center" sx={{ paddingTop: '2.5em', marginBottom: '1em' }}>
-                    <Fab color='primary' onClick={() => { setCreateOpen(true) }}>
+                    <Fab color='primary' onClick={openCreateModal}>
                       <AddIcon />
                     </Fab>
                   </Grid>
@@ -515,7 +617,7 @@ const App: React.FC = () => {
         )
       }
 
-      <Dialog open={createOpen} onClose={() => { setCreateOpen(false) }}>
+      <Dialog open={createOpen} onClose={closeCreateModal}>
         <form onSubmit={handleCreateSubmit}>
           <DialogTitle>Create a Task</DialogTitle>
           <DialogContent>
@@ -543,7 +645,7 @@ const App: React.FC = () => {
             ? (<LoadingBar />)
             : (
               <DialogActions>
-                <Button data-testid='p0-todo-create-cancel' onClick={() => { setCreateOpen(false) }}>Cancel</Button>
+                <Button data-testid='p0-todo-create-cancel' onClick={closeCreateModal}>Cancel</Button>
                 <Button data-testid='p0-todo-create-submit' type='submit'>OK</Button>
               </DialogActions>
             )
