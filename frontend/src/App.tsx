@@ -107,6 +107,8 @@ const App: React.FC = () => {
       if (!shouldOpen && completeTask === null) return
 
       if (completeTask !== null) {
+        setCompleteOpen(false)
+        setSelectedTask(null)
         setP0CompleteTask(completeTask)
         setCompleteAcceptDelayedBroadcast(!immediateBroadcast)
       }
@@ -150,7 +152,10 @@ const App: React.FC = () => {
     if (p0CompleteTask === null || tasksLoading) return
 
     const task = tasks.find(candidate => candidate.task === p0CompleteTask)
-    if (task === undefined) return
+    if (task === undefined) {
+      setP0CompleteTask(null)
+      return
+    }
 
     setSelectedTask(task)
     setCompleteOpen(true)
