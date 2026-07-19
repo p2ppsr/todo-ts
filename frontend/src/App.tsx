@@ -347,6 +347,10 @@ const App: React.FC = () => {
       setTasks([newTask, ...tasks])
       if (createIsP0) {
         cacheP0Task(newTask)
+        document.title = 'p0-todo-task-ready'
+        if (window.location.hash !== '#p0-todo-task-ready') {
+          window.location.hash = 'p0-todo-task-ready'
+        }
       }
 
       setCreateLoading(false)
