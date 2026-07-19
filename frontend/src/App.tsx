@@ -347,10 +347,9 @@ const App: React.FC = () => {
       setTasks([newTask, ...tasks])
       if (createIsP0) {
         cacheP0Task(newTask)
-        document.title = 'p0-todo-task-ready'
-        if (window.location.hash !== '#p0-todo-task-ready') {
-          window.location.hash = 'p0-todo-task-ready'
-        }
+        ;(window as any).ReactNativeWebView?.postMessage(
+          JSON.stringify({ type: 'P0_QA_MARKER', id: 'todo-task-ready', task: newTask.task, sats: newTask.sats })
+        )
       }
 
       setCreateLoading(false)
