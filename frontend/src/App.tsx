@@ -607,7 +607,12 @@ const App: React.FC = () => {
                 </NoItems>
               )}
               {tasks.map((task) => (
-                <ListItem key={task.outpoint} button onClick={openCompleteModal(task)}>
+                <ListItem
+                  key={task.outpoint}
+                  button
+                  onClick={openCompleteModal(task)}
+                  aria-label={`${task.task} ${task.sats} satoshis`}
+                >
                   <ListItemIcon><Checkbox checked={false} /></ListItemIcon>
                   <ListItemText primary={task.task} secondary={`${task.sats} satoshis`} />
                 </ListItem>
