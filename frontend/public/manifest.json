@@ -1,6 +1,7 @@
 {
   "short_name": "TODO",
   "name": "TODO",
+  "description": "Create private, encrypted ToDo tokens in your BRC100 wallet and redeem them when the work is complete.",
   "icons": [
     {
       "src": "favicon.ico",
@@ -11,5 +12,56 @@
   "start_url": ".",
   "display": "standalone",
   "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "background_color": "#ffffff",
+  "metanet": {
+    "schemaVersion": 1,
+    "brcs": ["BRC-2", "BRC-73", "BRC-100", "BRC-116"],
+    "repositoryUrl": "https://github.com/p2ppsr/todo-ts",
+    "groupPermissions": {
+      "description": "Encrypt, save, and redeem your private ToDo tokens.",
+      "protocolPermissions": [
+        {
+          "protocolID": [0, "todo list"],
+          "counterparty": "self",
+          "description": "Encrypt, decrypt, sign, and unlock your private ToDo tokens."
+        }
+      ],
+      "spendingAuthorization": {
+        "amount": 100000,
+        "duration": 2592000,
+        "description": "Create ToDo tokens and cover their transaction and developer fees."
+      },
+      "basketAccess": [
+        {
+          "basket": "todo tokens",
+          "description": "Save and retrieve your ToDo tokens."
+        }
+      ],
+      "certificateAccess": []
+    }
+  },
+  "babbage": {
+    "groupPermissions": {
+      "description": "Encrypt, save, and redeem your private ToDo tokens.",
+      "protocolPermissions": [
+        {
+          "protocolID": [0, "todo list"],
+          "counterparty": "self",
+          "description": "Encrypt, decrypt, sign, and unlock your private ToDo tokens."
+        }
+      ],
+      "spendingAuthorization": {
+        "amount": 100000,
+        "duration": 2592000,
+        "description": "Create ToDo tokens and cover their transaction and developer fees."
+      },
+      "basketAccess": [
+        {
+          "basket": "todo tokens",
+          "description": "Save and retrieve your ToDo tokens."
+        }
+      ],
+      "certificateAccess": []
+    }
+  }
 }
