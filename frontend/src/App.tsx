@@ -155,6 +155,7 @@ const App: React.FC = () => {
   const [completeLoading, setCompleteLoading] = useState<boolean>(false)
   const [p0CompleteTask, setP0CompleteTask] = useState<string | null>(null)
   const [createIsP0, setCreateIsP0] = useState<boolean>(false)
+  const [completeIsP0, setCompleteIsP0] = useState<boolean>(false)
   const [tasksLoadAttempted, setTasksLoadAttempted] = useState<boolean>(false)
   const [p0BypassInitialLoad] = useState<boolean>(shouldBypassInitialTaskLoad)
 
@@ -178,6 +179,7 @@ const App: React.FC = () => {
         setCompleteOpen(false)
         setSelectedTask(null)
         setP0CompleteTask(completeTask)
+        setCompleteIsP0(true)
         setCompleteAcceptDelayedBroadcast(!immediateBroadcast)
       }
       if (shouldOpen && task !== null) {
@@ -379,8 +381,7 @@ const App: React.FC = () => {
       if (selectedTask === null) {
         throw new Error('selectedTask does not exist')
       }
-      const completionWasRequestedByP0 =
-        new URLSearchParams(window.location.search).get(P0_COMPLETE_TASK_PARAM) === selectedTask.task
+      const completionWasRequestedByP0 = completeIsP0
 
       // Let the user know what's going on, and why they're getting some
       // Bitcoins back.
@@ -469,6 +470,7 @@ const App: React.FC = () => {
       }
 
       setSelectedTask(null)
+      setCompleteIsP0(false)
       setCompleteAcceptDelayedBroadcast(true)
     } catch (e) {
       toast.error(`Error completing task: ${(e as Error).message}`)
@@ -577,8 +579,14 @@ const App: React.FC = () => {
 
   // Opens the completion dialog for the selected task
   const openCompleteModal = (task: Task) => () => {
+    setCompleteIsP0(false)
     setSelectedTask(task)
     setCompleteOpen(true)
+  }
+
+  const closeCompleteModal = (): void => {
+    setCompleteIsP0(false)
+    setCompleteOpen(false)
   }
 
   return (
@@ -673,7 +681,7 @@ const App: React.FC = () => {
         </form>
       </Dialog>
 
-      <Dialog open={completeOpen} onClose={() => { setCompleteOpen(false) }}>
+      <Dialog open={completeOpen} onClose={closeCompleteModal}>
         <form onSubmit={handleCompleteSubmit}>
           <DialogTitle data-testid='p0-todo-complete-title'>Complete &quot;{selectedTask?.task}&quot;?</DialogTitle>
           <DialogContent>
@@ -685,7 +693,7 @@ const App: React.FC = () => {
             ? (<LoadingBar />)
             : (
               <DialogActions>
-                <Button onClick={() => { setCompleteOpen(false) }}>Cancel</Button>
+                <Button onClick={closeCompleteModal}>Cancel</Button>
                 <Button data-testid='p0-todo-complete-submit' type='submit'>Complete Task</Button>
               </DialogActions>
             )
