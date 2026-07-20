@@ -379,6 +379,8 @@ const App: React.FC = () => {
       if (selectedTask === null) {
         throw new Error('selectedTask does not exist')
       }
+      const completionWasRequestedByP0 =
+        new URLSearchParams(window.location.search).get(P0_COMPLETE_TASK_PARAM) === selectedTask.task
 
       // Let the user know what's going on, and why they're getting some
       // Bitcoins back.
@@ -455,6 +457,16 @@ const App: React.FC = () => {
       // Performance optimization: directly remove the completed task from current list
       setTasks(prevTasks => prevTasks.filter(task => task !== selectedTask))
       removeP0CachedTask(selectedTask.task)
+      if (completionWasRequestedByP0) {
+        ;(window as any).ReactNativeWebView?.postMessage(
+          JSON.stringify({
+            type: 'P0_QA_MARKER',
+            id: 'todo-task-complete',
+            task: selectedTask.task,
+            sats: selectedTask.sats
+          })
+        )
+      }
 
       setSelectedTask(null)
       setCompleteAcceptDelayedBroadcast(true)
