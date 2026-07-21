@@ -131,10 +131,6 @@ const walletClient = new BabbageGo(new WalletClient(), {
   advanced: {
     supportMetanetDevelopers: false
   },
-  monetization: {
-    developerIdentity: '02a064784ebb435e87c3961745b01e3564d41149ea1291d1a73783d1b7b3a7a220',
-    developerFeeSats: 300
-  },
   funding: {
     title: 'More Satoshis Needed',
     introText: 'Satoshis are needed perform this action, or you can cancel it.',
