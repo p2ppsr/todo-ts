@@ -18,8 +18,9 @@ import {
 import { styled } from '@mui/system'
 import AddIcon from '@mui/icons-material/Add'
 import GitHubIcon from '@mui/icons-material/GitHub'
-import { WalletClient, PushDrop, Utils, Transaction, LockingScript, type WalletOutput, WalletProtocol } from '@bsv/sdk'
+import { WalletClient, PushDrop, Utils, Transaction, LockingScript, Beef, type WalletOutput, WalletProtocol } from '@bsv/sdk'
 import { type Task } from './types/types'
+import { getSafeErrorMessage } from './utils/errorMessage'
 // This stylesheet also uses this for theming.
 import './App.scss'
 import BabbageGo from '@babbage/go'
@@ -472,7 +473,7 @@ const App: React.FC = () => {
       setCompleteIsP0(false)
       setCompleteAcceptDelayedBroadcast(true)
     } catch (e) {
-      toast.error(`Error completing task: ${(e as Error).message}`)
+      toast.error(`Error completing task: ${getSafeErrorMessage(e, 'The wallet could not complete this task. Please try again.')}`)
       console.error(e)
     } finally {
       setCompleteLoading(false)
@@ -507,6 +508,11 @@ const App: React.FC = () => {
         include: 'entire transactions',
         limit: 1000
       })
+      if (tasksFromBasket.BEEF === undefined) {
+        throw new Error('Wallet did not return transaction data for the ToDo tasks')
+      }
+      const basketBeef = Beef.fromBinary(tasksFromBasket.BEEF)
+      const atomicBeefByTxid = new Map<string, number[]>()
 
       // Now that we have the data (in the tasksFromBasket variable), we will
       // decode and decrypt the tasks we got from the basket. When the tasks
@@ -514,12 +520,21 @@ const App: React.FC = () => {
       // them.
       const decryptedTasksResults = await Promise.all(tasksFromBasket.outputs.map(async (task: WalletOutput) => {
         try {
-          const txid = task.outpoint.split('.')[0]
-          const tx = Transaction.fromBEEF(tasksFromBasket.BEEF as number[], txid)
-          if (tx === undefined) {
-            throw new Error('Missing transaction data for task')
+          const [txid, outputIndexText] = task.outpoint.split('.')
+          const outputIndex = Number(outputIndexText)
+          if (!Number.isSafeInteger(outputIndex) || outputIndex < 0) {
+            throw new Error('Invalid task outpoint')
           }
-          const lockingScript = tx.outputs[0].lockingScript
+          let atomicBeef = atomicBeefByTxid.get(txid)
+          if (atomicBeef === undefined) {
+            atomicBeef = basketBeef.toBinaryAtomic(txid)
+            atomicBeefByTxid.set(txid, atomicBeef)
+          }
+          const tx = Transaction.fromAtomicBEEF(atomicBeef)
+          const lockingScript = tx.outputs[outputIndex]?.lockingScript
+          if (lockingScript === undefined) {
+            throw new Error('Missing transaction output for task')
+          }
 
           const decodedTask = PushDrop.decode(lockingScript)
           const encryptedTask = decodedTask.fields[1]
@@ -532,10 +547,10 @@ const App: React.FC = () => {
 
           return {
             lockingScript: lockingScript.toHex(),
-            outpoint: `${txid}.0`,
+            outpoint: task.outpoint,
             sats: task.satoshis ?? 0,
             task: Utils.toUTF8(decryptedTaskNumArray.plaintext),
-            beef: tasksFromBasket.BEEF
+            beef: atomicBeef
           }
         } catch (error) {
           console.error('Error decrypting task:', error)
