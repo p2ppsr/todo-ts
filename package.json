@@ -23,5 +23,8 @@
   },
   "dependencies": {
     "@bsv/sdk": "^2.4.0"
+  },
+  "overrides": {
+    "@bsv/sdk": "$@bsv/sdk"
   }
 }
