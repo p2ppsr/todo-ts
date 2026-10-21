@@ -32,6 +32,39 @@ Helpful Links:
 - Use `cars` interactively, or visit your hosting provider(s) web portals, to view logs, configure custom domains, and pay your hosting bills
 - Share your new BSV project, it is now online!
 
+## Local TS Stack integration
+
+This branch can run the existing ToDo flows against a built local TS Stack
+checkout, including the compatibility changes in
+[TS Stack PR #674](https://github.com/bsv-blockchain/ts-stack/pull/674).
+Use Node 24. The reviewed starting revision is
+`b6b7a6e8ca28d7aedc64f630c432c321ecc82b3f`.
+
+```sh
+npm --prefix frontend ci --ignore-scripts
+npm run link:ts-stack -- /absolute/path/to/ts-stack
+npm run check:local
+npm run build:local
+npm run start:local
+```
+
+Open [http://localhost:8080](http://localhost:8080). The link command uses the
+checkout's existing build outputs and prints its actual revision and package
+versions. It links the SDK and the browser messaging packages already installed
+by ToDo, verifies that ToDo, Babbage Go and the linked packages resolve one SDK,
+and clears Vite's dependency cache. Links stay inside this checkout's ignored
+`frontend/node_modules`; dependency manifests and lockfiles keep the registry
+baseline. Re-run the link command after `npm ci`, and rebuild TS Stack after
+editing its sources. To restore registry packages, run `npm --prefix frontend ci`.
+
+The UI keeps its normal wallet transport. Connect a BRC-100 wallet, allow the
+ToDo basket and protocol permissions, then test listing existing tasks, creating
+a small task, reloading it, completing it and reloading again. These actions use
+the connected wallet's configured network and can spend real satoshis. A local
+SDK link exercises the application client; testing the changed Wallet Toolbox
+storage implementation also requires a wallet/provider running that candidate.
+Page-load and build checks alone do not establish successful funded integration.
+
 ## Directory Structure
 
 The project structure is roughly as follows, although it can vary by project.

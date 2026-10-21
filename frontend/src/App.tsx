@@ -508,6 +508,11 @@ const App: React.FC = () => {
         include: 'entire transactions',
         limit: 1000
       })
+      // Empty baskets have no transactions to encode as BEEF.
+      if (tasksFromBasket.outputs.length === 0) {
+        setTasks([])
+        return
+      }
       if (tasksFromBasket.BEEF === undefined) {
         throw new Error('Wallet did not return transaction data for the ToDo tasks')
       }
@@ -518,7 +523,7 @@ const App: React.FC = () => {
       // decode and decrypt the tasks we got from the basket. When the tasks
       // were created, they were encrypted so that only this user could read
       // them.
-      const decryptedTasksResults = await Promise.all(tasksFromBasket.outputs.map(async (task: WalletOutput) => {
+      const decryptedTasksResults = await Promise.all(tasksFromBasket.outputs.map(async (task: WalletOutput): Promise<Task | null> => {
         try {
           const [txid, outputIndexText] = task.outpoint.split('.')
           const outputIndex = Number(outputIndexText)
