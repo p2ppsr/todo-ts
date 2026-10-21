@@ -38,7 +38,7 @@ This branch can run the existing ToDo flows against a built local TS Stack
 checkout, including the compatibility changes in
 [TS Stack PR #674](https://github.com/bsv-blockchain/ts-stack/pull/674).
 Use Node 24. The reviewed starting revision is
-`b6b7a6e8ca28d7aedc64f630c432c321ecc82b3f`.
+`b05a766790cf7bcddacb1e256a9bb5e21dad9a43`.
 
 ```sh
 npm --prefix frontend ci --ignore-scripts
@@ -64,6 +64,21 @@ the connected wallet's configured network and can spend real satoshis. A local
 SDK link exercises the application client; testing the changed Wallet Toolbox
 storage implementation also requires a wallet/provider running that candidate.
 Page-load and build checks alone do not establish successful funded integration.
+
+The earlier linked revision `b6b7a6e8c` passed startup checks but failed a
+nonempty binary `listOutputs` request against Metanet Client 0.8.11: SDK4's
+extra spendability byte disagreed with the deployed wallet encoding. The
+reviewed revision restores the SDK2/3 binary format by default. Frozen SDK3.2.1
+frames and actual old/new codec pairings pass in both directions, including
+six-output pages and optional metadata. No JSON transport override is needed
+for ordinary ToDo inventory calls.
+
+Before funded testing, repeat the original read-only `listOutputs` request with
+the same installed wallet, origin and basket, and confirm that all six reported
+outputs decode. Then test rendering/decryption of existing tasks. This host's
+empty-state reload, typecheck and production build pass, but do not replace that
+installed-wallet check or prove funded creation/redemption/internalization.
+
 
 ## Directory Structure
 
