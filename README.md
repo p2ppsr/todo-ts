@@ -38,7 +38,7 @@ This branch can run the existing ToDo flows against a built local TS Stack
 checkout, including the compatibility changes in
 [TS Stack PR #674](https://github.com/bsv-blockchain/ts-stack/pull/674).
 Use Node 24. The reviewed starting revision is
-`b05a766790cf7bcddacb1e256a9bb5e21dad9a43`.
+`9199ac5784f55e7df13bd2c1839ab0d0017b0303`.
 
 ```sh
 npm --prefix frontend ci --ignore-scripts
